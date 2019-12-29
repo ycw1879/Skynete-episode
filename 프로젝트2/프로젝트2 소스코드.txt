@@ -1,0 +1,328 @@
+#include <iostream>
+#include <stdio.h>
+#include <vector>
+#include <algorithm>
+#include <queue>
+
+using namespace std;
+
+/**
+ * Auto-generated code below aims at helping you parse
+ * the standard input according to the problem statement.
+ **/
+
+vector<int> gateway;    //  set of vertex for the gateway
+
+struct Node{
+    vector<int> edge;
+    int parent; //  front Node to find load
+    int gate;   //  check the gate
+    int gateCnt;//  check the number of gate for load
+    Node() : gate(0), parent(-1), gateCnt(0){}
+    void SortEdge(){    //  ascend vertax of edge in this node
+        sort(edge.begin(), edge.end());
+    }
+};
+
+//  count gate for edge about the Node
+void NumOfGate(vector<Node> &arr){
+    for(int i = 0; i < arr.size(); i++){
+        int cnt = 0;
+        if(arr[i].gate == 0){
+            for(int j = 0; j < arr[i].edge.size(); j++){
+                if(arr[arr[i].edge[j]].gate == 1)
+                    cnt++;
+            }
+            arr[i].gateCnt = cnt;
+        }
+    }
+}
+
+//  output = vertex, gateway, ditance, risk(number of gateway)
+vector<int> BFS(vector<Node> arr, int st, int dst){
+    int flag = 0;
+    vector<int> ret;
+    vector<int> visit(arr.size(), 0);
+    int depth = -1;
+    queue<int> a;
+    a.push(st);
+    while(!a.empty()){
+        depth++;
+        int qSize = a.size();
+        for(int i = 0; i < qSize; i++){
+            int temp = a.front();
+            a.pop();
+            visit[temp] = 1;
+            for(int i = 0; i < arr[temp].edge.size(); i++){
+                if(arr[temp].edge[i] == dst ){
+                    ret.push_back(temp);
+                    ret.push_back(arr[temp].edge[i]);
+                    arr[arr[temp].edge[i]].parent = temp;
+                    flag = 1;
+                    break;
+                }
+                if(visit[arr[temp].edge[i]] == 0 && arr[arr[temp].edge[i]].gate != 1){
+                    visit[arr[temp].edge[i]] = 1;
+                    a.push(arr[temp].edge[i]);
+                    arr[arr[temp].edge[i]].parent = temp;
+                }
+            }
+            if(flag == 1)
+                break;
+        }
+        if(flag == 1)
+            break;
+    }
+    if(flag == 1) {
+        ret.push_back(depth);
+        int sum = 0, ll = ret[1];
+        while(ll != -1){
+            sum += arr[ll].gateCnt;
+            ll = arr[ll].parent;
+        }
+        ret.push_back(sum);
+        return ret;
+    } else{
+        return ret;
+    }
+}
+
+//  vertex processor(sort)
+void SortDistance3(vector<Node> arr, vector<vector<int>> &tempo2){
+    for(int a = tempo2.size() - 1; a > 0; a--){
+        for(int b = 0; b < a; b++){
+            if(tempo2[b][1] > tempo2[b + 1][1]){
+                vector<int> tp = tempo2[b];
+                tempo2[b] = tempo2[b+1];
+                tempo2[b+1] = tp;
+            }
+        }
+    }
+}
+
+//  vertex processor(sort)
+void SortDistance2(vector<Node> arr, vector<vector<int>> &tempo2){
+    for(int a = tempo2.size() - 1; a > 0; a--){
+        for(int b = 0; b < a; b++){
+            if(tempo2[b][2] > tempo2[b + 1][2]){
+                vector<int> tp = tempo2[b];
+                tempo2[b] = tempo2[b+1];
+                tempo2[b+1] = tp;
+            }
+        }
+    }
+}
+
+//  vertex processor(sort)
+void SortDistance(vector<Node> arr, vector<vector<int>> &distance){
+    //  the first is to sort for number of gateway
+    for(int a = distance.size() - 1; a > 0; a--){
+        for(int b = 0; b < a; b++){
+            if(arr[distance[b][0]].gateCnt < arr[distance[b + 1][0]].gateCnt){
+                vector<int> tp = distance[b];
+                distance[b] = distance[b + 1];
+                distance[b + 1] = tp;
+            }
+        }
+    }
+    int twoGate = 0;    //  count number of two gateway
+    for(int i = 0; i < distance.size(); i++){
+        if(arr[distance[i][0]].gateCnt == 2){
+            twoGate++;
+        }
+    }
+    //  the seconds is to sort for distance in number of two gateway
+    for(int a = distance.size() - 1 - twoGate; a > 0; a--){
+        for(int b = 0; b < a; b++){
+            if(distance[b][2] > distance[b+1][2]){
+                vector<int> tp = distance[b];
+                distance[b] = distance[b + 1];
+                distance[b + 1] = tp;
+            }
+        }
+    }
+    //  the thirds is to sort for distance in number of one gateway
+    for(int a = distance.size() - 1; a > twoGate; a--){
+        for(int b = twoGate; b < a; b++){
+            if(distance[b][2] > distance[b+1][2]){
+                vector<int> tp = distance[b];
+                distance[b] = distance[b + 1];
+                distance[b + 1] = tp;
+            }
+        }
+    }
+}
+
+//  output = vertex, gateway
+//  find two vertex to cut edge
+vector<int> FindEdge(vector<Node> &arr, int start){
+    vector<vector<int>> distance;
+    int flag = -1;
+    for(int i = 0; i < gateway.size(); i++){
+        vector<int> tp = BFS(arr, start, gateway[i]);
+        if(tp.size() > 2) {
+            distance.push_back(tp);
+        }
+    }
+    SortDistance(arr, distance);    //  sort distance of gateway
+    for(int i = 0; i < distance.size(); i++){   //  find (distance = 1)
+        if(distance[i][2] < 1){
+            flag = i;
+        }
+    }
+    if(flag != -1){ //  distance is 1
+        vector<int> result;
+        result.push_back(distance[flag][0]);
+        result.push_back(distance[flag][1]);
+        for(int i = 0; i < arr[distance[flag][0]].edge.size(); i++){
+            if(arr[distance[flag][0]].edge[i] == distance[flag][1]) {
+                arr[distance[flag][0]].edge.erase(arr[distance[flag][0]].edge.begin() + i);
+            }
+        }
+        for(int i = 0; i < arr[distance[flag][1]].edge.size(); i++){
+            if(arr[distance[flag][1]].edge[i] == distance[flag][0]) {
+                arr[distance[flag][1]].edge.erase(arr[distance[flag][1]].edge.begin() + i);
+            }
+        }
+        return result;
+    }
+    else {  //  distance is not 1 -> count numbers of gate for load and find node to have two gate
+        vector<int> result;
+        vector<vector<int>> tempo2;
+        for(int i = 0; i < arr.size(); i++){
+            if(arr[i].gateCnt == 2 && arr[i].gate != 1){
+                vector<int> tempo;
+                tempo.push_back(i); //  index0 = node to have two gate
+                vector<int> tempo3 = BFS(arr, start, i);    //  use BFS
+                tempo.push_back(tempo3[2] - tempo3[3]); //  index1 = distance - risk(number of gate in load)
+                tempo.push_back(tempo3[2]); //  index2 = distance
+                tempo2.push_back(tempo);    //  in conclude, only use tempo2
+            }
+        }
+        if(tempo2.size() != 0){ //  priority of node having two gateway
+            SortDistance3(arr, tempo2); //  sort for risk
+            SortDistance2(arr, tempo2); //  sort for distance
+            int flag1 = 0;  //  reduce to calculate
+            if(tempo2.size() > 1){  //  only compare two Node
+                if(tempo2[0][1] < tempo2[1][1]){
+                    for(int i = 0; i < gateway.size(); i++){
+                        for(int j = 0; j < arr[gateway[i]].edge.size(); j++){
+                            if(arr[gateway[i]].edge[j] == tempo2[0][0]){
+                                result.push_back(tempo2[0][0]);
+                                result.push_back(gateway[i]);
+                                flag1 = 1;
+                                break;
+                            }
+                        }
+                        if(flag1 == 1)
+                            break;
+                    }
+                    for (int i = 0; i < arr[result[0]].edge.size(); i++) {
+                        if (arr[result[0]].edge[i] == result[1])
+                            arr[result[0]].edge.erase(arr[result[0]].edge.begin() + i);
+                    }
+                    for (int i = 0; i < arr[result[1]].edge.size(); i++) {
+                        if (arr[result[1]].edge[i] == result[0])
+                            arr[result[1]].edge.erase(arr[result[1]].edge.begin() + i);
+                    }
+                    return result;
+                }
+                else{
+                    for(int i = 0; i < gateway.size(); i++){
+                        for(int j = 0; j < arr[gateway[i]].edge.size(); j++){
+                            if(arr[gateway[i]].edge[j] == tempo2[1][0]){
+                                result.push_back(tempo2[1][0]);
+                                result.push_back(gateway[i]);
+                                flag1 = 1;
+                                break;
+                            }
+                        }
+                        if(flag1 == 1)
+                            break;
+                    }
+                    for (int i = 0; i < arr[result[0]].edge.size(); i++) {
+                        if (arr[result[0]].edge[i] == result[1])
+                            arr[result[0]].edge.erase(arr[result[0]].edge.begin() + i);
+                    }
+                    for (int i = 0; i < arr[result[1]].edge.size(); i++) {
+                        if (arr[result[1]].edge[i] == result[0])
+                            arr[result[1]].edge.erase(arr[result[1]].edge.begin() + i);
+                    }
+                    return result;
+                }
+            }
+            else{   //  only use edge to have two gate
+                for(int i = 0; i < gateway.size(); i++){
+                    for(int j = 0; j < arr[gateway[i]].edge.size(); j++){
+                        if(arr[gateway[i]].edge[j] == tempo2[0][0]){
+                            result.push_back(tempo2[0][0]);
+                            result.push_back(gateway[i]);
+                            flag1 = 1;
+                            break;
+                        }
+                    }
+                    if(flag1 == 1)
+                        break;
+                }
+                for (int i = 0; i < arr[result[0]].edge.size(); i++) {
+                    if (arr[result[0]].edge[i] == result[1])
+                        arr[result[0]].edge.erase(arr[result[0]].edge.begin() + i);
+                }
+                for (int i = 0; i < arr[result[1]].edge.size(); i++) {
+                    if (arr[result[1]].edge[i] == result[0])
+                        arr[result[1]].edge.erase(arr[result[1]].edge.begin() + i);
+                }
+                return result;
+            }
+        }
+        else {  //  the last is only to use edge to have one gateway
+            vector<int> result;
+            result.push_back(distance[0][0]);
+            result.push_back(distance[0][1]);
+            for(int i = 0; i < arr[distance[0][0]].edge.size(); i++){
+                if(arr[distance[0][0]].edge[i] == distance[0][1]) {
+                    arr[distance[0][0]].edge.erase(arr[distance[0][0]].edge.begin() + i);
+                }
+            }
+            for(int i = 0; i < arr[distance[0][1]].edge.size(); i++){
+                if(arr[distance[0][1]].edge[i] == distance[0][0]) {
+                    arr[distance[0][1]].edge.erase(arr[distance[0][1]].edge.begin() + i);
+                }
+            }
+            return result;
+        }
+    }
+}
+
+int main()
+{
+    int N; // the total number of nodes in the level, including the gateways
+    int L; // the number of links
+    int E; // the number of exit gateways
+    cin >> N >> L >> E; cin.ignore();
+    vector<Node> arr(N);
+    for (int i = 0; i < L; i++) {
+        int N1; // N1 and N2 defines a link between these nodes
+        int N2;
+        cin >> N1 >> N2; cin.ignore();
+        arr[N1].edge.push_back(N2);
+        arr[N2].edge.push_back(N1);
+    }
+    for (int i = 0; i < E; i++) {
+        int EI; // the index of a gateway node
+        cin >> EI; cin.ignore();
+        arr[EI].gate = 1;
+        gateway.push_back(EI);
+    }
+    for (int i = 0; i < N; i++) {
+        arr[i].SortEdge();
+    }
+    // game loop
+    while (1) {
+        NumOfGate(arr);
+        int SI; // The index of the node on which the Skynet agent is positioned this turn
+        cin >> SI; cin.ignore();
+        vector<int> result = FindEdge(arr, SI);
+        printf("%d %d\n", result[0], result[1]);
+    }
+}
